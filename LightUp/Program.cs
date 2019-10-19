@@ -1,13 +1,17 @@
-﻿using Q42.HueApi.Interfaces;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Hosting;
+﻿using Connectitude.LightUp.Hue;
+using Connectitude.LightUp.Jira;
+using Connectitude.LightUp.Options;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.IO;
+using System.Threading.Tasks;
 
-namespace LightUp
+namespace Connectitude.LightUp
 {
     public class Program
     {
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
             CreateHostBuilder(args)
                 .Build()
@@ -16,18 +20,25 @@ namespace LightUp
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                .ConfigureHostConfiguration(configHost =>
+                {
+                    configHost.SetBasePath(Directory.GetCurrentDirectory());
+                    configHost.AddJsonFile("data/configuration.json", optional: true, true);
+                    configHost.AddJsonFile("data/settings.json", optional: true, true);
+                    //configHost.AddEnvironmentVariables();
+                })
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.Configure<ApplicationOptions>(hostContext.Configuration);
+                    
                     services.AddHostedService<LifetimeEventsHostedService>();
-                });
-    }
+                    
+                    services.AddHttpClient();
 
-    public class ApplicationOptions
-    {
-        public string BridgeId { get; set; }
-        public string AppKey { get; set; }
-        public string LightNames { get; set; }
+                    services.AddSingleton<Bridge>();
+                    
+                    services.AddTransient<JiraClient>();
+                });
     }
 }
 

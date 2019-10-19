@@ -1,36 +1,38 @@
-﻿using Q42.HueApi;
-using Q42.HueApi.ColorConverters;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Q42.HueApi.ColorConverters.Original;
+﻿using Connectitude.LightUp.Hue;
+using Connectitude.LightUp.Jira;
+using Connectitude.LightUp.Options;
+using Connectitude.LightUp.Options.Jira;
 using Microsoft.Extensions.Hosting;
-using System.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Text.Json;
+using System;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace LightUp
+namespace Connectitude.LightUp
 {
     internal class LifetimeEventsHostedService : IHostedService
     {
-        private const string DeviceName = "67b66b4f-c8d2-41b1-";
-        private const string SettingsFileName = "appsettings.json";
-
         private readonly ILogger m_Logger;
         private readonly IHostApplicationLifetime m_AppLifetime;
         private readonly IOptionsMonitor<ApplicationOptions> m_Options;
+        private readonly Bridge m_HueBridge;
+        private readonly JiraClient m_JiraClient;
+        private Timer m_Timer;
 
         public LifetimeEventsHostedService(
             ILogger<LifetimeEventsHostedService> logger,
             IHostApplicationLifetime appLifetime,
-            IOptionsMonitor<ApplicationOptions> options)
+            IOptionsMonitor<ApplicationOptions> options,
+            Bridge hueBridge, JiraClient jiraClient)
         {
             m_Logger = logger;
             m_AppLifetime = appLifetime;
             m_Options = options;
+            m_HueBridge = hueBridge;
+            m_JiraClient = jiraClient;
         }
 
         public ApplicationOptions Options => m_Options.CurrentValue;
@@ -53,79 +55,37 @@ namespace LightUp
         {
             m_Logger.LogInformation("Application started.");
 
-            if (string.IsNullOrEmpty(Options.BridgeId))
+            if (string.IsNullOrEmpty(Options.HueBridge.Id))
             {
                 m_Logger.LogError("BridgeId is missing in configuration.");
                 m_AppLifetime.StopApplication();
                 return;
             }
 
-            var bridgeLocator = new HttpBridgeLocator();
-            var bridgeIps = await bridgeLocator.LocateBridgesAsync(TimeSpan.FromSeconds(5));
-            var bridgeIp = bridgeIps.FirstOrDefault(bridge => bridge.BridgeId.Equals(Options.BridgeId, StringComparison.InvariantCultureIgnoreCase));
+            var bridgeIp = await m_HueBridge.FindAsync(Options.HueBridge.Id);
             if (bridgeIp == null)
             {
-                m_Logger.LogError($"Bridge with id '{Options.BridgeId}' not found on network.");
+                m_Logger.LogError($"Bridge with id '{Options.HueBridge.Id}' not found on network.");
                 m_AppLifetime.StopApplication();
                 return;
             }
-            
-            var hueClient = new LocalHueClient(bridgeIp.IpAddress);
 
-            if (string.IsNullOrEmpty(Options.AppKey))
+            if (!(await m_HueBridge.InitializeAsync(bridgeIp.IpAddress, Options.HueBridge.AppKey, Options.HueBridge.LightNames.Split(','))))
             {
-                try
-                {
-                    string appKey = await hueClient.RegisterAsync("LightUp", DeviceName);
-
-                    await SaveAppKeyAsync(appKey);
-
-                    Options.AppKey = appKey;
-                }
-                catch (LinkButtonNotPressedException)
-                {
-                    m_Logger.LogError("The application must be linked with the Hue Bridge. Press the button on the Hue Bridge before restarting application.");
-                    m_AppLifetime.StopApplication();
-                    return;
-                }               
+                m_Logger.LogError("The application must be linked with the Hue Bridge. Press the button on the Hue Bridge before restarting application.");
+                m_AppLifetime.StopApplication();
+                return;
             }
 
-            hueClient.Initialize(Options.AppKey);            
-            
-            var command = new LightCommand();            
-            command.TurnOn().SetColor(new RGBColor("FF0000"));
-
-            // Blink once
-            command.Alert = Alert.Once;
-
-            // Or start a colorloop
-            //command.Effect = Effect.ColorLoop;
-
-            if (string.IsNullOrEmpty(Options.LightNames))
-            {
-                await hueClient.SendCommandAsync(command);
-            }
-            else
-            {
-                var lights = await hueClient.GetLightsAsync();
-                string[] lightNames = Options.LightNames.Split(',');
-                string[] lightIds = 
-                    lights
-                        .Where(light =>
-                            lightNames.Any(lightName =>
-                                light.Name.Equals(lightName.Trim(), StringComparison.InvariantCultureIgnoreCase)))
-                        .Select(light => light.Id)
-                        .ToArray();
-
-                await hueClient.SendCommandAsync(command, lightIds);
-            }
+            m_Timer = new Timer(OnTimer, null, 0, Timeout.Infinite);
         }
 
         private void OnStopping()
         {
             m_Logger.LogInformation("Application stopping...");
 
-            // Perform on-stopping activities here
+            m_Timer?.Change(Timeout.Infinite, Timeout.Infinite);
+            m_Timer?.Dispose();
         }
 
         private void OnStopped()
@@ -135,28 +95,37 @@ namespace LightUp
             // Perform post-stopped activities here
         }
 
-        private async Task SaveAppKeyAsync(string appKey)
+        private async void OnTimer(object state)
         {
-            ApplicationOptions settings;
-
             try
             {
-                using (var fileStream = File.Open(SettingsFileName, FileMode.OpenOrCreate))
+                foreach (var board in Options.Jira.Boards)
                 {
-                    settings = await JsonSerializer.DeserializeAsync<ApplicationOptions>(fileStream);
+                    foreach (var query in board.Queries)
+                    {
+                        var issues = await m_JiraClient.GetIssuesAsync(
+                            Options.AtlassianCloud.BaseUrl,
+                            Options.AtlassianCloud.Username,
+                            Options.AtlassianCloud.Token,
+                            board.Id, query.Query,
+                            CancellationToken.None);
+
+                        if (!issues.Any())
+                            continue;
+
+                        await m_HueBridge.ShowAlertAsync(query.AlertColor);
+
+                        await Task.Delay(10);
+                    }
                 }
             }
-            catch (JsonException)
+            catch (Exception exception)
             {
-                settings = new ApplicationOptions();
+                m_Logger.LogError(exception, "Error while running alert rules.");
             }
-
-            settings.AppKey = appKey;
-
-            using (var fileStream = File.Open(SettingsFileName, FileMode.Create))
+            finally
             {
-                var options = new JsonSerializerOptions() { WriteIndented = true };
-                await JsonSerializer.SerializeAsync(fileStream, settings, options);
+                m_Timer.Change(Options.AlertScanFrequency, Timeout.Infinite);
             }
         }
     }

@@ -1,0 +1,12 @@
+version: '3.4'
+
+services:
+  lightup:
+    image: ${DOCKER_REGISTRY-}lightup
+    build:
+      context: .
+      dockerfile: LightUp/Dockerfile
+    volumes:
+      - ~/iot-lightup/data:/app/data
+    environment:
+      - AlertScanFrequency=10000
