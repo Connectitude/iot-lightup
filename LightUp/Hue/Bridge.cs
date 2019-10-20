@@ -61,7 +61,7 @@ namespace Connectitude.LightUp.Hue
             return true;
         }
 
-        public Task ShowAlertAsync(string color)
+        public Task TurnOnAlertAsync(string color)
         {
             var command = new LightCommand();
             command.TurnOn().SetColor(new RGBColor(color));
@@ -70,14 +70,23 @@ namespace Connectitude.LightUp.Hue
             // Or start a colorloop
             //command.Effect = Effect.ColorLoop;
 
+            return SendCommandAsync(command);
+        }
+
+        public Task TurnOffAsync()
+        {
+            var command = new LightCommand();
+            command.TurnOff();
+
+            return SendCommandAsync(command);
+        }
+
+        private Task SendCommandAsync(LightCommand command)
+        {
             if (m_LightIds == null)
-            {
                 return m_HueClient.SendCommandAsync(command);
-            }
-            else
-            {
-                return m_HueClient.SendCommandAsync(command, m_LightIds);
-            }
+
+            return m_HueClient.SendCommandAsync(command, m_LightIds);
         }
 
         private async Task SaveAppKeyAsync(string appKey)

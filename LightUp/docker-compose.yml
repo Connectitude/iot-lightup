@@ -7,10 +7,3 @@ services:
     container_name: iot-lightup
     volumes:
       - ~/iot-lightup/data:/app/data
-    environment:
-      - AlertScanFrequency=60000
-      - HueBridge__Id=
-      - "HueBridge__LightNames=Alarm_1, Alarm_2, Alarm_3"
-      - AtlassianCloud__BaseUrl=
-      - AtlassianCloud__Username=
-      - AtlassianCloud__Token=

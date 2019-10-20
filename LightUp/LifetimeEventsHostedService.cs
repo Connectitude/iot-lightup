@@ -99,6 +99,16 @@ namespace Connectitude.LightUp
         {
             try
             {
+                if (!IsScheduled(Options.Schedules))
+                {
+                    if (Options.IsBlackoutEnabled)
+                    {
+                        await m_HueBridge.TurnOffAsync();
+                    }
+
+                    return;
+                }
+
                 foreach (var board in Options.Jira.Boards)
                 {
                     foreach (var query in board.Queries)
@@ -113,7 +123,7 @@ namespace Connectitude.LightUp
                         if (!issues.Any())
                             continue;
 
-                        await m_HueBridge.ShowAlertAsync(query.AlertColor);
+                        await m_HueBridge.TurnOnAlertAsync(query.AlertColor);
 
                         await Task.Delay(10);
                     }
@@ -127,6 +137,20 @@ namespace Connectitude.LightUp
             {
                 m_Timer.Change(Options.AlertScanFrequency, Timeout.Infinite);
             }
+        }
+
+        private bool IsScheduled(Schedule[] schedules)
+        {
+            var todaysSchedules = schedules.Where(schedule => schedule.Days.Contains(DateTime.Now.DayOfWeek));
+
+            var timeUtc = DateTime.UtcNow.TimeOfDay;
+            foreach (var schedule in todaysSchedules)
+            {
+                if (schedule.IsWithin(timeUtc))
+                    return true;
+            }
+
+            return false;
         }
     }
 }
