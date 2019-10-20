@@ -1,7 +1,7 @@
-FROM mcr.microsoft.com/dotnet/core/runtime:3.0-buster-slim AS base
+FROM mcr.microsoft.com/dotnet/core/runtime:3.0-alpine3.9 AS base
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/core/sdk:3.0-buster AS build
+FROM mcr.microsoft.com/dotnet/core/sdk:3.0-alpine3.9 AS build
 WORKDIR /src
 COPY ["LightUp/LightUp.csproj", "LightUp/"]
 RUN dotnet restore "LightUp/LightUp.csproj"
