@@ -1,11 +1,11 @@
 ﻿using Connectitude.LightUp.Hue;
 using Connectitude.LightUp.Jira;
 using Connectitude.LightUp.Options;
+using Connectitude.LightUp.TeamCity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.IO;
-using System.Threading.Tasks;
 
 namespace Connectitude.LightUp
 {
@@ -38,6 +38,8 @@ namespace Connectitude.LightUp
                     services.AddSingleton<Bridge>();
                     
                     services.AddTransient<JiraClient>();
+                    services.AddTransient<TeamCityClient>();
+                    services.AddTransient<AlertScanner>();
                 });
     }
 }

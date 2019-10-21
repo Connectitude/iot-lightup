@@ -46,7 +46,8 @@ namespace Connectitude.LightUp.Jira
             using var response = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                m_Logger.LogError($"Failure getting issues from Jira sprint, '{response.ReasonPhrase}'");
+                var message = await response.Content.ReadAsStringAsync();
+                m_Logger.LogError($"Failure getting issues from Jira query '{query}'. Error: {message}");
             }
 
             var json = await response.Content.ReadAsStringAsync();

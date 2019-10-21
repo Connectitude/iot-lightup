@@ -1,5 +1,4 @@
 ﻿using Connectitude.LightUp.Hue;
-using Connectitude.LightUp.Jira;
 using Connectitude.LightUp.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,7 +16,7 @@ namespace Connectitude.LightUp
         private readonly IHostApplicationLifetime m_AppLifetime;
         private readonly IOptionsMonitor<ApplicationOptions> m_Options;
         private readonly Bridge m_HueBridge;
-        private readonly JiraClient m_JiraClient;
+        private readonly AlertScanner m_AlertScanner;
         private Timer m_Timer;
         private DateTime? m_LastAlertAt;
 
@@ -25,13 +24,13 @@ namespace Connectitude.LightUp
             ILogger<LifetimeEventsHostedService> logger,
             IHostApplicationLifetime appLifetime,
             IOptionsMonitor<ApplicationOptions> options,
-            Bridge hueBridge, JiraClient jiraClient)
+            Bridge hueBridge, AlertScanner alertScanner)
         {
             m_Logger = logger;
             m_AppLifetime = appLifetime;
             m_Options = options;
             m_HueBridge = hueBridge;
-            m_JiraClient = jiraClient;
+            m_AlertScanner = alertScanner;
         }
 
         public ApplicationOptions Options => m_Options.CurrentValue;
@@ -109,37 +108,24 @@ namespace Connectitude.LightUp
                 }
 
                 bool hasAnyAlert = false;
-                foreach (var board in Options.Jira.Boards)
+
+                await foreach (var alertLight in m_AlertScanner.ScanAsync(CancellationToken.None))
                 {
-                    foreach (var query in board.Queries)
+                    hasAnyAlert = true;
+
+                    if (m_LastAlertAt.HasValue &&
+                        m_LastAlertAt.Value.AddSeconds(Options.AlertDelay) >= DateTime.UtcNow)
                     {
-                        var issues = await m_JiraClient.GetIssuesAsync(
-                            Options.AtlassianCloud.BaseUrl,
-                            Options.AtlassianCloud.Username,
-                            Options.AtlassianCloud.Token,
-                            board.Id, query.Query,
-                            CancellationToken.None);
-
-                        if (!issues.Any())
-                            continue;
-
-                        hasAnyAlert = true;
-
-                        if (m_LastAlertAt.HasValue &&
-                            m_LastAlertAt.Value.AddSeconds(Options.AlertDelay) >= DateTime.UtcNow)
-                        {
-                            continue;
-                        }
-
-                        var alertColor = query.AlertLight?.Color ?? "FF0000";
-                        var alertBrightness = query.AlertLight?.Brightness ?? 100;
-                        await m_HueBridge.AlertAsync(alertColor, alertBrightness);
-                        
-                        m_LastAlertAt = DateTime.UtcNow;
-
-                        // TODO: Priority between alert scans?
-                        await Task.Delay(10);
+                        continue;
                     }
+
+                    var alertColor = alertLight.Color ?? "FF0000";
+                    await m_HueBridge.AlertAsync(alertColor, alertLight.Brightness);
+
+                    m_LastAlertAt = DateTime.UtcNow;
+
+                    // TODO: Priority between alert scans?
+                    await Task.Delay(7 * 1000);
                 }
 
                 if (!hasAnyAlert)

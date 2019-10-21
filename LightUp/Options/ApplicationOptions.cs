@@ -1,4 +1,6 @@
-﻿namespace Connectitude.LightUp.Options
+﻿using Connectitude.LightUp.Options.TeamCity;
+
+namespace Connectitude.LightUp.Options
 {
     public class ApplicationOptions
     {
@@ -13,6 +15,8 @@
         public AtlassianCloud AtlassianCloud { get; set; }
 
         public Jira.JiraOptions Jira { get; set; }
+        
+        public TeamCityOptions TeamCity { get; set; }
 
         public Schedule[] Schedules { get; set; }
 
