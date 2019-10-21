@@ -49,6 +49,20 @@ The application looks for a "configuration.json" file within a "data" folder.
     ]
   },
   "teamcity": {
+    "baseUrl": "<baseUrl>",
+    "token": "<apiToken>",
+    "projects": [
+      {
+        "id": "<projectId>", 
+        "isRecursive": true,
+        "excludeBuildConfigIds": "<buildConfigId_1>, <buildConfigId_2>",
+        "alertLight": 
+        {
+          "color": "FFA500",
+          "brightness": 90
+        }
+      }
+    ]
   },
   "schedules": [
     {
