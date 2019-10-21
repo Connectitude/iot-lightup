@@ -61,14 +61,24 @@ namespace Connectitude.LightUp.Hue
             return true;
         }
 
-        public Task TurnOnAlertAsync(string color)
+        public Task AlertAsync(string color, double brightness = 100)
         {
             var command = new LightCommand();
+            command.Brightness = (byte)(brightness / 100F * 255);
             command.TurnOn().SetColor(new RGBColor(color));
             command.Alert = Alert.Multiple;
 
             // Or start a colorloop
             //command.Effect = Effect.ColorLoop;
+
+            return SendCommandAsync(command);
+        }
+
+        public Task ChangeColorAsync(string color, byte brightness = 100)
+        {
+            var command = new LightCommand();
+            command.Brightness = (byte)(brightness / 100F * 255);
+            command.TurnOn().SetColor(new RGBColor(color));
 
             return SendCommandAsync(command);
         }

@@ -4,7 +4,8 @@
     {
         public ApplicationOptions()
         {
-            AlertScanFrequency = 60000;
+            AlertScanFrequency = 60;
+            AlertDelay = 300;
         }
 
         public HueBridge HueBridge { get; set; }
@@ -17,6 +18,16 @@
 
         public bool IsBlackoutEnabled { get; set; }
 
-        public int AlertScanFrequency { get; set; }        
+        /// <summary>
+        /// Frequency, in seconds, to scan for alerts.
+        /// </summary>
+        public int AlertScanFrequency { get; set; }
+
+        /// <summary>
+        /// Delay, in seconds, between alerts.
+        /// </summary>
+        public int AlertDelay { get; set; }
+
+        public LightOption AmbientLight { get; set; }
     }
 }

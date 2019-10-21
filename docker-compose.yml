@@ -9,4 +9,4 @@ services:
     volumes:
       - ~/iot-lightup/data:/app/data
     environment:
-      - AlertScanFrequency=15000
+      - AlertScanFrequency=15

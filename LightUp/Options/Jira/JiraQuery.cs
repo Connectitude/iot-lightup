@@ -4,6 +4,6 @@
     {
         public string Query { get; set; }
 
-        public string AlertColor { get; set; }
+        public LightOption AlertLight { get; set; }
     }
 }

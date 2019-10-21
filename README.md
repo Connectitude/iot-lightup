@@ -14,16 +14,22 @@ The application looks for a "configuration.json" file within a "data" folder.
 
 ```json
 {
-  "alertScanFrequency": 300000,
+  "alertScanFrequency": 60,
+  "alertDelay": 300,
   "isBlackoutEnabled": true,
+  "ambientLight": 
+  {
+    "color": "63BBE9",
+    "brightness": 50
+  },
   "hueBridge": {
-    "id": "",
+    "id": "<bridgeId>",
     "lightNames": "<lightName_1>, <lightName_2>, <lightName_3>"
   },
   "atlassianCloud": {
-    "baseUrl": "",
-    "username": "",
-    "token": ""
+    "baseUrl": "<baseUrl>",
+    "username": "<username>",
+    "token": "<apiToken>"
   },
   "jira": {
     "boards": [
@@ -32,7 +38,11 @@ The application looks for a "configuration.json" file within a "data" folder.
         "queries": [
           {
             "query": "sprint = <sprintId> AND status != Done",
-            "alertColor": "FF0000"
+            "alertLight": 
+            {
+              "color": "FF0000",
+              "brightness": 90
+            }
           }
         ]
       }

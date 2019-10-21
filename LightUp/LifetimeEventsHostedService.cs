@@ -1,12 +1,10 @@
 ﻿using Connectitude.LightUp.Hue;
 using Connectitude.LightUp.Jira;
 using Connectitude.LightUp.Options;
-using Connectitude.LightUp.Options.Jira;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +19,7 @@ namespace Connectitude.LightUp
         private readonly Bridge m_HueBridge;
         private readonly JiraClient m_JiraClient;
         private Timer m_Timer;
+        private DateTime? m_LastAlertAt;
 
         public LifetimeEventsHostedService(
             ILogger<LifetimeEventsHostedService> logger,
@@ -109,6 +108,7 @@ namespace Connectitude.LightUp
                     return;
                 }
 
+                bool hasAnyAlert = false;
                 foreach (var board in Options.Jira.Boards)
                 {
                     foreach (var query in board.Queries)
@@ -123,9 +123,35 @@ namespace Connectitude.LightUp
                         if (!issues.Any())
                             continue;
 
-                        await m_HueBridge.TurnOnAlertAsync(query.AlertColor);
+                        hasAnyAlert = true;
 
+                        if (m_LastAlertAt.HasValue &&
+                            m_LastAlertAt.Value.AddSeconds(Options.AlertDelay) >= DateTime.UtcNow)
+                        {
+                            continue;
+                        }
+
+                        var alertColor = query.AlertLight?.Color ?? "FF0000";
+                        var alertBrightness = query.AlertLight?.Brightness ?? 100;
+                        await m_HueBridge.AlertAsync(alertColor, alertBrightness);
+                        
+                        m_LastAlertAt = DateTime.UtcNow;
+
+                        // TODO: Priority between alert scans?
                         await Task.Delay(10);
+                    }
+                }
+
+                if (!hasAnyAlert)
+                {
+                    if (string.IsNullOrEmpty(Options.AmbientLight?.Color))
+                    {
+                        await m_HueBridge.TurnOffAsync();
+                    }
+                    else
+                    {
+                        var ambientBrightness = Options.AmbientLight?.Brightness ?? 100;
+                        await m_HueBridge.ChangeColorAsync(Options.AmbientLight.Color, ambientBrightness);  
                     }
                 }
             }
@@ -135,7 +161,7 @@ namespace Connectitude.LightUp
             }
             finally
             {
-                m_Timer.Change(Options.AlertScanFrequency, Timeout.Infinite);
+                m_Timer.Change(Options.AlertScanFrequency * 1000, Timeout.Infinite);
             }
         }
 
