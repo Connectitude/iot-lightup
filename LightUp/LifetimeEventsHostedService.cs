@@ -12,6 +12,8 @@ namespace Connectitude.LightUp
 {
     internal class LifetimeEventsHostedService : IHostedService
     {
+        private const string DefaultAlertColor = "FF0000";
+        
         private readonly ILogger m_Logger;
         private readonly IHostApplicationLifetime m_AppLifetime;
         private readonly IOptionsMonitor<ApplicationOptions> m_Options;
@@ -103,6 +105,10 @@ namespace Connectitude.LightUp
                     {
                         await m_HueBridge.TurnOffAsync();
                     }
+                    else if (Options.AmbientLight != null)
+                    {
+                        await m_HueBridge.ChangeColorAsync(Options.AmbientLight.Color, Options.AmbientLight.Brightness);
+                    }
 
                     return;
                 }
@@ -119,7 +125,7 @@ namespace Connectitude.LightUp
                         continue;
                     }
 
-                    var alertColor = alertLight.Color ?? "FF0000";
+                    var alertColor = alertLight.Color ?? DefaultAlertColor;
                     await m_HueBridge.AlertAsync(alertColor, alertLight.Brightness);
 
                     m_LastAlertAt = DateTime.UtcNow;
@@ -130,14 +136,13 @@ namespace Connectitude.LightUp
 
                 if (!hasAnyAlert)
                 {
-                    if (string.IsNullOrEmpty(Options.AmbientLight?.Color))
+                    if (Options.AmbientLight == null)
                     {
                         await m_HueBridge.TurnOffAsync();
                     }
                     else
                     {
-                        var ambientBrightness = Options.AmbientLight?.Brightness ?? 100;
-                        await m_HueBridge.ChangeColorAsync(Options.AmbientLight.Color, ambientBrightness);  
+                        await m_HueBridge.ChangeColorAsync(Options.AmbientLight.Color, Options.AmbientLight.Brightness);
                     }
                 }
             }
