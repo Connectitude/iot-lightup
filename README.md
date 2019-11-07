@@ -7,6 +7,8 @@ Different schedules can be specified for when to scan for alerts. A blackout pro
 
 LightUp communicates with the Philips Hue lights through a Hue Bridge.
 
+![Ambient light](Images/ambient_light_on.jpg "Ambient light") ![Alert light](Images/alert_light_on.jpg "Alert light")
+
 ## Configuration
 The application looks for a "configuration.json" file within a "data" folder.
 
