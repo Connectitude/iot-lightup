@@ -2,6 +2,12 @@
 {
     public class JiraOptions
     {
-        public JiraBoard[] Boards { get; set; }
+        public string BaseUrl { get; set; }
+
+        public string Username { get; set; }
+
+        public string Token { get; set; }       
+
+        public JiraQuery[] Queries { get; set; }
     }
 }

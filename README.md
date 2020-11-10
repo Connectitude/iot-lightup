@@ -28,25 +28,27 @@ The application looks for a "configuration.json" file within a "data" folder.
     "id": "<bridgeId>",
     "lightNames": "<lightName_1>, <lightName_2>, <lightName_3>"
   },
-  "atlassianCloud": {
+  "jira": {
     "baseUrl": "<baseUrl>",
     "username": "<username>",
-    "token": "<apiToken>"
-  },
-  "jira": {
-    "boards": [
+    "token": "<apiToken>",
+    "queries": [
       {
-        "id": "<boardId>",
-        "queries": [
-          {
-            "query": "sprint = <sprintId> AND status != Done",
-            "alertLight": 
-            {
-              "color": "FF0000",
-              "brightness": 90
-            }
-          }
-        ]
+        "boardId": "<boardId>",
+        "query": "sprint = <sprintId> AND status != Done",
+        "alertLight": 
+        {
+          "color": "FF0000",
+          "brightness": 90
+        }
+      },
+      {
+        "query": "project = <projectId> AND status != Done",
+        "alertLight": 
+        {
+          "color": "00FF00",
+          "brightness": 70
+        }
       }
     ]
   },

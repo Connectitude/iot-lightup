@@ -27,20 +27,38 @@ namespace Connectitude.LightUp.Jira
             if (string.IsNullOrEmpty(baseUrl) ||
                 string.IsNullOrEmpty(username) ||
                 string.IsNullOrEmpty(token) ||
-                string.IsNullOrEmpty(boardId) ||
                 string.IsNullOrEmpty(query))
                 return Enumerable.Empty<Issue>().ToArray();
 
             string auth = $"{username}:{token}";
             string bin64Auth = Convert.ToBase64String(Encoding.Default.GetBytes(auth));
 
-            string encodedQuery = HttpUtility.UrlEncode(query);
-            string url = $"{baseUrl}/rest/agile/1.0/board/{boardId}/issue?jql={encodedQuery}&fields=status";
-            using var requestMessage = new HttpRequestMessage(HttpMethod.Get, url);
+            var httpMethod = HttpMethod.Post;
+            string url = $"{baseUrl}/rest/api/3/search";
+
+            bool isBoardQuery = !string.IsNullOrEmpty(boardId);
+            if (isBoardQuery)
+            {
+                httpMethod = HttpMethod.Get;
+                string encodedQuery = HttpUtility.UrlEncode(query);
+                url = $"{baseUrl}/rest/agile/1.0/board/{boardId}/issue?jql={encodedQuery}&fields=status&maxResults=1";
+            }            
+            
+            using var requestMessage = new HttpRequestMessage(httpMethod, url);
             requestMessage.Headers.Add("Authorization", $"Basic {bin64Auth}");
             requestMessage.Headers.Add("Accept", "application/json");
-                
-            //httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            var jsonOptions = new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+            if (!isBoardQuery) {
+                string jsonBody = JsonSerializer.Serialize(new 
+                {
+                    Jql = query,
+                    MaxResults = 1,
+                    Fields = new [] { "summary" }
+                }, jsonOptions);
+                requestMessage.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+            }
 
             using var httpClient = m_HttpClientFactory.CreateClient();
             using var response = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -51,8 +69,7 @@ namespace Connectitude.LightUp.Jira
             }
 
             var json = await response.Content.ReadAsStringAsync();
-
-            var jsonOptions = new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            
             var issueResponse = JsonSerializer.Deserialize<IssueResponse>(json, jsonOptions);
             return issueResponse.Issues;
         }

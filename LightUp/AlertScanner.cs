@@ -34,23 +34,20 @@ namespace Connectitude.LightUp
 
         public async IAsyncEnumerable<LightOption> ScanAsync(CancellationToken cancellationToken)
         {
-            foreach (var board in Options.Jira.Boards)
+            foreach (var query in Options.Jira.Queries)
             {
-                foreach (var query in board.Queries)
-                {
-                    var issues = await m_JiraClient.GetIssuesAsync(
-                        Options.AtlassianCloud.BaseUrl,
-                        Options.AtlassianCloud.Username,
-                        Options.AtlassianCloud.Token,
-                        board.Id, query.Query,
-                        cancellationToken);
+                var issues = await m_JiraClient.GetIssuesAsync(
+                    Options.Jira.BaseUrl,
+                    Options.Jira.Username,
+                    Options.Jira.Token,
+                    query.BoardId, query.Query,
+                    cancellationToken);
 
-                    if (!issues.Any())
-                        continue;
+                if (!issues.Any())
+                    continue;
 
-                    if (query.AlertLight != null)
-                        yield return query.AlertLight;
-                }
+                if (query.AlertLight != null)
+                    yield return query.AlertLight;
             }
 
             foreach (var project in Options.TeamCity.Projects)

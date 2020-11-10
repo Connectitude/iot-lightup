@@ -12,8 +12,6 @@ namespace Connectitude.LightUp.Options
 
         public HueBridge HueBridge { get; set; }
 
-        public AtlassianCloud AtlassianCloud { get; set; }
-
         public Jira.JiraOptions Jira { get; set; }
         
         public TeamCityOptions TeamCity { get; set; }
